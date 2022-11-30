@@ -306,8 +306,8 @@ public class ElasticsearchSinkConnectorConfig extends AbstractConfig {
   public static final String SECURITY_PROTOCOL_CONFIG = "elastic.security.protocol";
   private static final String SECURITY_PROTOCOL_DOC =
       "The security protocol to use when connecting to Elasticsearch. Values can be `PLAINTEXT` or"
-          + " `SSL`. If `PLAINTEXT` is passed, all configs prefixed by " + SSL_CONFIG_PREFIX
-          + " will be ignored.";
+          + " `SSL` or `BEARER`. If `PLAINTEXT` is passed, all configs prefixed by "
+          + SSL_CONFIG_PREFIX + " will be ignored.";
   private static final String SECURITY_PROTOCOL_DISPLAY = "Security protocol";
   private static final String SECURITY_PROTOCOL_DEFAULT = SecurityProtocol.PLAINTEXT.name();
 
@@ -850,7 +850,7 @@ public class ElasticsearchSinkConnectorConfig extends AbstractConfig {
   }
 
   public boolean isBearerAuthenticatedConnection() {
-    return 
+    return bearerToken() != null;
   }
 
   public boolean isBasicProxyConfigured() {
@@ -1010,8 +1010,8 @@ public class ElasticsearchSinkConnectorConfig extends AbstractConfig {
     return getString(PROXY_USERNAME_CONFIG);
   }
 
-  public String bearerToken() {
-    return getString(CONNECTION_BEARER_TOKEN_CONFIG);
+  public Password bearerToken() {
+    return getPassword(CONNECTION_BEARER_TOKEN_CONFIG);
   }
 
   public int readTimeoutMs() {

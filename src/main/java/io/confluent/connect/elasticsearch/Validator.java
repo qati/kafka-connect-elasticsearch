@@ -15,37 +15,14 @@
 
 package io.confluent.connect.elasticsearch;
 
-import org.apache.http.HttpHost;
-import org.apache.kafka.common.config.Config;
-import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.config.ConfigValue;
-import org.apache.kafka.common.config.SslConfigs;
-import org.elasticsearch.ElasticsearchStatusException;
-import org.elasticsearch.client.core.MainResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.SecurityProtocol;
-
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.BATCH_SIZE_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.BEHAVIOR_ON_NULL_VALUES_CONFIG;
-import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.BehaviorOnNullValues;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.CONNECTION_PASSWORD_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.CONNECTION_URL_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.CONNECTION_USERNAME_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.DATA_STREAM_DATASET_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.DATA_STREAM_TIMESTAMP_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.DATA_STREAM_TYPE_CONFIG;
-import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.DataStreamType;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.FLUSH_TIMEOUT_MS_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.IGNORE_KEY_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.IGNORE_KEY_TOPICS_CONFIG;
@@ -63,7 +40,33 @@ import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfi
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.SECURITY_PROTOCOL_CONFIG;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.SSL_CONFIG_PREFIX;
 import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.WRITE_METHOD_CONFIG;
-import static io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.WriteMethod;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpHost;
+import org.apache.http.message.BasicHeader;
+import org.apache.kafka.common.config.Config;
+import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.ConfigValue;
+import org.apache.kafka.common.config.SslConfigs;
+import org.elasticsearch.ElasticsearchStatusException;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.core.MainResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.BehaviorOnNullValues;
+import io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.DataStreamType;
+import io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.SecurityProtocol;
+import io.confluent.connect.elasticsearch.ElasticsearchSinkConnectorConfig.WriteMethod;
 
 public class Validator {
 
@@ -88,6 +91,11 @@ public class Validator {
     } catch (ConfigException e) {
       // some configs are invalid
     }
+
+    log.info("Create Validator class, clientFactory: ", 
+        clientFactory,
+        clientFactory == null ? "no" : clientFactory.toString()
+    );
 
     this.clientFactory = clientFactory == null ? this::createClient : clientFactory;
     validations = ElasticsearchSinkConnectorConfig.CONFIG.validate(props);
@@ -393,8 +401,10 @@ public class Validator {
     boolean successful;
     String exceptionMessage = "";
     try {
+      log.info("validateconnection: ");
       successful = client.ping(RequestOptions.DEFAULT);
     } catch (ElasticsearchStatusException e) {
+      log.warn("failed to connect to elasticsearch", e.getMessage(), e.status(), e.toString(), e);
       switch (e.status()) {
         case FORBIDDEN:
           // ES is up, but user is not authorized to ping server
@@ -466,7 +476,13 @@ public class Validator {
   }
 
   private RestHighLevelClient createClient() {
+    log.info("Create http client in Validator");
     ConfigCallbackHandler configCallbackHandler = new ConfigCallbackHandler(config);
+    Header h = new BasicHeader(HttpHeaders.AUTHORIZATION, "Bearer " + config.bearerToken().value());
+    Header[] headers = {
+      h
+    };
+    log.info("HEADER: '%s', '%s'", h.getName(), h.getValue());
     return new RestHighLevelClient(
         RestClient
             .builder(
@@ -476,6 +492,7 @@ public class Validator {
                     .collect(Collectors.toList())
                     .toArray(new HttpHost[config.connectionUrls().size()])
             )
+            .setDefaultHeaders(headers)
             .setHttpClientConfigCallback(configCallbackHandler)
     );
   }

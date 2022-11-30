@@ -111,6 +111,8 @@ public class ConfigCallbackHandler implements HttpClientConfigCallback {
       log.info("Using Kerberos connection to {}.", config.connectionUrls());
     } else if (config.isSslEnabled()) {
       log.info("Using SSL connection to {}.", config.connectionUrls());
+    } else if (config.isBearerAuthenticatedConnection()) {
+      log.info("Using Bearer Authorization for connection to {}.", config.connectionUrls());
     } else {
       log.info("Using unsecured connection to {}.", config.connectionUrls());
     }
@@ -135,13 +137,14 @@ public class ConfigCallbackHandler implements HttpClientConfigCallback {
     }
 
     if (config.isBearerAuthenticatedConnection()) {
+      log.info("Using Bearer Token authentication");
       config.connectionUrls().forEach(url -> credentialsProvider.setCredentials(
               new AuthScope(HttpHost.create(url)),
-              new TokenCredentials(config.bearerToken())
+              new TokenCredentials(config.bearerToken().value())
           )
       );
       Lookup<AuthSchemeProvider> authSchemeRegistry =
-        RegistryBuilder.<AuthSchemeProvider>create()
+          RegistryBuilder.<AuthSchemeProvider>create()
             .register("Bearer", new BearerAuthSchemeProvider())
             .build();
       builder.setDefaultAuthSchemeRegistry(authSchemeRegistry);
