@@ -476,13 +476,12 @@ public class Validator {
   }
 
   private RestHighLevelClient createClient() {
-    log.info("Create http client in Validator");
     ConfigCallbackHandler configCallbackHandler = new ConfigCallbackHandler(config);
-    Header h = new BasicHeader(HttpHeaders.AUTHORIZATION, "Bearer " + config.bearerToken().value());
     Header[] headers = {
-      h
+      new BasicHeader(HttpHeaders.AUTHORIZATION, "ApiKey " + config.bearerToken().value()),
+      new BasicHeader(HttpHeaders.ACCEPT, "application/json"),
+      new BasicHeader(HttpHeaders.CONTENT_TYPE, "application/json"),
     };
-    log.info("HEADER: '%s', '%s'", h.getName(), h.getValue());
     return new RestHighLevelClient(
         RestClient
             .builder(

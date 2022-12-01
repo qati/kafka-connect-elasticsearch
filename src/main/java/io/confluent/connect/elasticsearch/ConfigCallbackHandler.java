@@ -19,9 +19,11 @@ import com.sun.security.auth.module.Krb5LoginModule;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -30,6 +32,9 @@ import javax.security.auth.kerberos.KerberosPrincipal;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
 import javax.security.auth.login.LoginContext;
+import javax.ws.rs.core.HttpHeaders;
+
+import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthSchemeProvider;
 import org.apache.http.auth.AuthScope;
@@ -49,6 +54,7 @@ import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.nio.conn.NoopIOSessionStrategy;
 import org.apache.http.nio.conn.SchemeIOSessionStrategy;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
@@ -145,10 +151,16 @@ public class ConfigCallbackHandler implements HttpClientConfigCallback {
       );
       Lookup<AuthSchemeProvider> authSchemeRegistry =
           RegistryBuilder.<AuthSchemeProvider>create()
-            .register("Bearer", new BearerAuthSchemeProvider())
+            .register("ApiKey", new BearerAuthSchemeProvider())
             .build();
-      builder.setDefaultAuthSchemeRegistry(authSchemeRegistry);
-      builder.setDefaultCredentialsProvider(credentialsProvider);
+      List<Header> headers = new ArrayList<Header>();
+      headers.add(new BasicHeader(
+          HttpHeaders.AUTHORIZATION,
+          "ApiKey " + config.bearerToken().value()
+      ));
+      //builder.setDefaultAuthSchemeRegistry(authSchemeRegistry);
+      //builder.setDefaultCredentialsProvider(credentialsProvider);
+      builder.setDefaultHeaders(headers);
     }
 
     if (config.isBasicProxyConfigured()) {

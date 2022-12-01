@@ -58,14 +58,14 @@ public class BearerAuthSchemeProvider implements AuthSchemeProvider {
         throws AuthenticationException {
       CharArrayBuffer buffer = new CharArrayBuffer(32);
       buffer.append(AUTH.WWW_AUTH_RESP);
-      buffer.append(": Bearer ");
+      buffer.append(": ApiKey ");
       buffer.append(credentials.getUserPrincipal().getName());
       return new BufferedHeader(buffer);
     }
 
     @Override
     public String getSchemeName() {
-      return "Bearer";
+      return "ApiKey";
     }
 
     @Override
