@@ -142,6 +142,7 @@ public class ElasticsearchClient {
                 .collect(toList())
                 .toArray(new HttpHost[config.connectionUrls().size()])
         ).setHttpClientConfigCallback(configCallbackHandler).build();
+    log.info("ElasticSearchClient client built!!!");
 
     esVersion = getServerVersion(client);
 
